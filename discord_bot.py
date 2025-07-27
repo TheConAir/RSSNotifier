@@ -1,7 +1,7 @@
 # discord_bot.py
 import asyncio
 from typing import Optional
-
+import time
 import discord
 from discord.ext import commands
 from discord.commands import SlashCommandGroup, Option
@@ -48,35 +48,67 @@ def build_bot(searcher, guild_id: Optional[int] = None) -> commands.Bot:
 
     @alerts.command(name="list", description="List current search terms")
     async def list_(ctx: discord.ApplicationContext):
+        await ctx.defer(ephemeral=True)
         terms = searcher.get_search_terms()
         if not terms:
-            await ctx.respond("No search terms yet.", ephemeral=True)
+            await ctx.followup.send("No search terms yet.", ephemeral=True)
             return
-        await ctx.respond("Current search terms: " + ", ".join(terms), ephemeral=True)
+        await ctx.followup.send("Current search terms: " + ", ".join(terms), ephemeral=True)
 
     # add /alerts add|remove later…
 
-    @alerts.command(name="add", description="Add to current search terms")
-    async def list_(ctx: discord.ApplicationContext, term: Option(str, "Term to track")):
-        searcher.add_search_term(term)
-        await ctx.respond("Search term: \"" + term + "\" added to the list.", ephemeral=True)
+    @alerts.command(name="add", description="Add a search term")
+    async def add_(ctx, term: str):
+        await ctx.defer(ephemeral=True)  # instant ACK so no timeout
+        ok = searcher.add_search_term(term)  # synchronous; quick
+        msg = f'Added "{term}".' if ok else f'"{term}" was already tracked.'
+        await ctx.followup.send(msg, ephemeral=True)
 
     @alerts.command(name="remove", description="Remove current search terms")
-    async def list_(ctx: discord.ApplicationContext, term: Option(str, "Term to track")):
+    async def remove_(ctx: discord.ApplicationContext, term: Option(str, "Term to track")):
+        await ctx.defer(ephemeral=True)
         searcher.remove_search_term(term)
-        await ctx.respond("Search term: \"" + term + "\" removed from the list.", ephemeral=True)
+        await ctx.followup.send("Search term: \"" + term + "\" removed from the list.", ephemeral=True)
 
     @alerts.command(name="rescan", description="Rescan all items in RSS feed with current search terms")
-    async def list_(ctx: discord.ApplicationContext):
+    async def rescan_(ctx: discord.ApplicationContext):
+        await ctx.defer(ephemeral=True)  # show the typing/loader
         terms = searcher.get_search_terms()
-        await ctx.respond("Searching all items for terms: " + ", ".join(terms), ephemeral=True)
-        matchedItems = searcher.find_matches()
-        for each in matchedItems:
-            item_id = each["id"]
-            url = each["url"]
-            term = each["terms"]
-            term_str = ", ".join(term) if isinstance(term, (list, tuple, set)) else str(term)
-            await ctx.followup.send(f"Found match for {term_str}: {url}" , ephemeral=True)
+        msg = await ctx.followup.send(f"⏳ Scanning all items for: {', '.join(terms)}",ephemeral=True)
+        stop = asyncio.Event()
+
+        async def spinner():
+            frames = ["⏳", "🔎", "⌛"]
+            i = 0
+            while not stop.is_set():
+                await msg.edit(content=f"{frames[i % len(frames)]} Scanning all items for: {', '.join(terms)}")
+                i += 1
+                # gentle on rate limits
+                try:
+                    await asyncio.wait_for(stop.wait(), timeout=1.5)
+                except asyncio.TimeoutError:
+                    pass
+        spin_task = asyncio.create_task(spinner())
+
+        try:
+            # run CPU/network heavy work off the event loop
+            matches = await asyncio.to_thread(searcher.find_matches)
+        except Exception as e:
+            stop.set();
+            await spin_task
+            await msg.edit(content=f"⚠️ Scan failed: {e!r}")
+            return
+        stop.set();
+        await spin_task
+
+        if not matches:
+            await msg.edit(content="✅ Done. No matches found.")
+            return
+
+        # summarize results without spamming follow-ups
+        lines = [f"• {', '.join(m.get('terms', []))} — {m.get('url')}" for m in matches[:10]]
+        more = f"\n…and {len(matches) - 10} more." if len(matches) > 10 else ""
+        await msg.edit(content="✅ Done. Found:\n" + "\n".join(lines) + more)
 
     return bot
 

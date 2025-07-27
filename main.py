@@ -20,7 +20,6 @@ def main():
 
     while True:
         try:
-            time.sleep(REFRESH_INTERVAL)
             found = searcher.process_unread_items()
             if found:
                 logger.info(f"Processing complete. Found {len(found)} matching articles.")
@@ -29,6 +28,7 @@ def main():
             break
         except Exception as e:
             logger.error(f"Error in main loop: {e}")
+        time.sleep(REFRESH_INTERVAL)
 
 if __name__ == "__main__":
     main()

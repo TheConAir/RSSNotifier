@@ -10,7 +10,7 @@ FRESHRSS_PASSWORD = os.getenv('FRESHRSS_PASSWORD')
 
 # Discord Settings
 DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')
-DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')  # For future use
+DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD_ID = int(os.getenv("GUILD_ID"))
 
 # Scraper Settings
