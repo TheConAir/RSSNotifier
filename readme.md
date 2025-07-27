@@ -1,4 +1,4 @@
-RSSNotifier
+# RSSNotifier
 
 Discord bot + FreshRSS watcher that scans feed items, pulls XML, searches for your keywords, and quietly reports matches.
 Features
@@ -19,14 +19,14 @@ Features
 
     Runs the bot standalone or alongside your long‑running monitor
 
-Quick Start
+# Quick Start
 
-# 1) Create & activate venv
+## 1) Create & activate venv
 python -m venv .venv
-# Windows PowerShell:
+## Windows PowerShell:
 .\.venv\Scripts\Activate.ps1
 
-# 2) Install deps
+## 2) Install deps
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 
