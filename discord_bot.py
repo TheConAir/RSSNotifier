@@ -108,7 +108,7 @@ def build_bot(searcher, guild_id: Optional[int] = None) -> commands.Bot:
 
         # run the blocking scan off the event loop
         try:
-            matches = await asyncio.to_thread(searcher.find_matches)
+            matches = await asyncio.to_thread(searcher.process_items, True) #Was searcher.find_matches
         finally:
             stop.set()
             await spinner_task  # wait for spinner to exit cleanly

@@ -60,47 +60,12 @@ class FederalRegisterSearcher:
         low = text.lower()
         return [t for t in terms if t.lower() in low]
 
-    #This will find matches without marking anything as read or sending notifications
-    def find_matches(self):
-        items = self.freshrss.get_all_items()
-
-        if not items:
-            return []
-
-        found_articles = []
-
-        for item in items:
-            try:
-                item_id = self.freshrss.extract_item_id(item)
-                xml_url = self.freshrss.extract_xml_url(item)
-
-                # Parse XML content
-                xml_content = self.xml_parser.fetch_and_parse_xml(xml_url)
-                if not xml_content:
-                    continue
-
-                # Search for terms
-                found_terms = self.xml_parser.search_xml_content(xml_content, self.search_terms)
-
-                if found_terms:
-                    print(f"Search string found for article {item_id}!")
-                    print(xml_url)
-
-                    found_articles.append({
-                        'id': item_id,
-                        'url': xml_url,
-                        'terms': found_terms
-                    })
-
-            except Exception as e:
-                logger.error(f"Error processing item: {e}")
-                continue
-
-        return found_articles
-
-    def process_unread_items(self):
+    def process_items(self, rescan):
         """Process all unread items and check for search terms - your core logic"""
-        unread_items = self.freshrss.get_unread_items()
+        if rescan:
+            unread_items = self.freshrss.get_all_items()
+        else:
+            unread_items = self.freshrss.get_unread_items()
 
         if not unread_items:
             return []
@@ -127,7 +92,8 @@ class FederalRegisterSearcher:
                         print(xml_url)
 
                         # Send Discord notification
-                        self.notifier.send_notification(found_terms, xml_url, item_id)
+                        if not rescan:
+                            self.notifier.send_notification(found_terms, xml_url, item_id)
 
                         found_articles.append({
                             'id': item_id,
@@ -136,7 +102,8 @@ class FederalRegisterSearcher:
                         })
 
                     # Mark as read
-                    self.freshrss.mark_as_read(item_id)
+                    if not rescan:
+                        self.freshrss.mark_as_read(item_id)
 
                 except Exception as e:
                     logger.error(f"Error processing item: {e}")
@@ -155,7 +122,8 @@ class FederalRegisterSearcher:
                         print(url)
 
                         # Send Discord notification
-                        self.notifier.send_notification(found_terms, item_id)
+                        if not rescan:
+                            self.notifier.send_notification(found_terms, item_id)
 
                         found_articles.append({
                             'id': item_id,
@@ -163,7 +131,8 @@ class FederalRegisterSearcher:
                         })
 
                     # Mark as read
-                    self.freshrss.mark_as_read(item_id)
+                    if not rescan:
+                        self.freshrss.mark_as_read(item_id)
 
                 except Exception as e:
                     logger.error(f"Error processing item: {e}")

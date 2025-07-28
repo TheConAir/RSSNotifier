@@ -14,13 +14,14 @@ def main():
     t = Thread(target=run_bot, args=(searcher, GUILD_ID), daemon=True)
     t.start()
 
+
     logger.info("Starting Federal Register monitoring...")
     logger.info(f"Search terms: {searcher.get_search_terms()}")
     logger.info(f"Refresh interval: {REFRESH_INTERVAL} seconds")
 
     while True:
         try:
-            found = searcher.process_unread_items()
+            found = searcher.process_items(False)
             if found:
                 logger.info(f"Processing complete. Found {len(found)} matching articles.")
         except KeyboardInterrupt:
