@@ -5,24 +5,24 @@ from config.settings import DEFAULT_SEARCH_TERMS
 from loguru import logger
 from pathlib import Path
 from store_terms import StoreTerms
-from config.settings import DEFAULT_SEARCH_TERMS
 
 
 
 class FederalRegisterSearcher:
     def __init__(self, search_terms=None):
-        self.search_terms = search_terms or DEFAULT_SEARCH_TERMS.copy()
         self.freshrss = FreshRSSManager()
         self.xml_parser = XMLContentParser()
         self.notifier = DiscordNotifier()
-        # seed from settings first
-        self.search_terms = list(DEFAULT_SEARCH_TERMS)
-        # hook up persistence
         self._store = StoreTerms(Path("data/search_terms.json"))
-        # if we already have persisted terms, use those
+
         persisted = self._store.load()
-        if persisted:
+
+        if search_terms is not None:
+            self.search_terms = list(search_terms)
+        elif persisted:
             self.search_terms = persisted
+        else:
+            self.search_terms = list(DEFAULT_SEARCH_TERMS)
 
     def add_search_term(self, term):
         term = (term or "").strip()
@@ -88,8 +88,10 @@ class FederalRegisterSearcher:
                     found_terms = self.xml_parser.search_xml_content(xml_content, self.search_terms)
 
                     if found_terms:
-                        print(f"Search string found for Federal Register article {item_id}!")
-                        print(xml_url)
+                        logger.info(
+                            f"Search string found for Federal Register article {item_id}!"
+                        )
+                        logger.info(xml_url)
 
                         # Send Discord notification
                         if not rescan:
@@ -118,8 +120,10 @@ class FederalRegisterSearcher:
                     found_terms = self._find_terms_in_text(title, self.search_terms)
 
                     if found_terms:
-                        print(f"Search string found for SEC article {item_id}!")
-                        print(url)
+                        logger.info(
+                            f"Search string found for SEC article {item_id}!"
+                        )
+                        logger.info(url)
 
                         # Send Discord notification
                         if not rescan:
