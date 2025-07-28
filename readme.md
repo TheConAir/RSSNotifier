@@ -27,3 +27,12 @@ Slash commands can be used to get current search terms, update search terms, and
 ## Tips
 
 - Replies are ephemeral by default to avoid spamming channels.
+
+## Running tests
+
+Install dependencies and run the test suite using [pytest](https://pytest.org/):
+
+```bash
+pip install -r requirements.txt
+pytest
+```
