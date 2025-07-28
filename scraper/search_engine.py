@@ -123,7 +123,8 @@ class FederalRegisterSearcher:
 
                         # Send Discord notification
                         if not rescan:
-                            self.notifier.send_notification(found_terms, item_id)
+                            # send URL so Discord message includes a link
+                            self.notifier.send_notification(found_terms, url, item_id)
 
                         found_articles.append({
                             'id': item_id,
