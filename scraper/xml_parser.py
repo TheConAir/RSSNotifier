@@ -19,9 +19,10 @@ class XMLContentParser:
             return ""
 
     def search_xml_content(self, xml_content, search_terms):
-        """Search for terms in XML content and return found terms"""
+        """Search for terms in XML content and return found terms."""
+        xml_low = (xml_content or "").lower()
         found_terms = []
         for term in search_terms:
-            if term in xml_content:
+            if term.lower() in xml_low:
                 found_terms.append(term)
         return found_terms
