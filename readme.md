@@ -36,3 +36,25 @@ Install dependencies and run the test suite using [pytest](https://pytest.org/):
 pip install -r requirements.txt
 pytest
 ```
+
+## Setup
+
+Create a `.env` file with the required environment variables:
+
+```
+FRESHRSS_HOST=<your FreshRSS host>
+FRESHRSS_USERNAME=<your username>
+FRESHRSS_PASSWORD=<your password>
+DISCORD_WEBHOOK_URL=<webhook url>
+DISCORD_TOKEN=<bot token>
+# optional, defaults to 0
+GUILD_ID=<guild id>
+```
+
+Install the dependencies and start the bot:
+
+```bash
+pip install -r requirements.txt
+python main.py
+```
+

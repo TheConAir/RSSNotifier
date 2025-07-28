@@ -108,3 +108,46 @@ def test_process_items_rescan(monkeypatch, tmp_path):
         {"id": "a", "url": "http://example.com/a.xml", "terms": ["alpha", "beta"]},
         {"id": "b", "url": "http://example.com/b", "terms": ["beta"]},
     ]
+
+
+def test_init_respects_passed_terms(monkeypatch):
+    monkeypatch.setenv("GUILD_ID", "1")
+    import scraper.search_engine as se
+    import importlib
+    importlib.reload(se)
+
+    class StoreStub:
+        def __init__(self, path):
+            pass
+        def load(self):
+            return ["persisted"]
+
+    monkeypatch.setattr(se, "StoreTerms", StoreStub)
+    monkeypatch.setattr(se, "FreshRSSManager", lambda: None)
+    monkeypatch.setattr(se, "XMLContentParser", lambda: None)
+    monkeypatch.setattr(se, "DiscordNotifier", lambda: None)
+
+    searcher = se.FederalRegisterSearcher(search_terms=["x", "y"])
+    assert searcher.get_search_terms() == ["x", "y"]
+
+
+def test_init_uses_persisted_terms(monkeypatch):
+    monkeypatch.setenv("GUILD_ID", "1")
+    import scraper.search_engine as se
+    import importlib
+    importlib.reload(se)
+
+    class StoreStub:
+        def __init__(self, path):
+            pass
+        def load(self):
+            return ["persisted"]
+
+    monkeypatch.setattr(se, "StoreTerms", StoreStub)
+    monkeypatch.setattr(se, "FreshRSSManager", lambda: None)
+    monkeypatch.setattr(se, "XMLContentParser", lambda: None)
+    monkeypatch.setattr(se, "DiscordNotifier", lambda: None)
+
+    searcher = se.FederalRegisterSearcher()
+    assert searcher.get_search_terms() == ["persisted"]
+
