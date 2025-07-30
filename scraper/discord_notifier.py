@@ -26,3 +26,23 @@ class DiscordNotifier:
 
         except Exception as e:
             logger.error(f"Error sending Discord notification: {e}")
+
+    def send_8k_notification(self, company, context, url, item_id=None):
+        """Send a Discord notification specifically for 8-K filings."""
+        try:
+            message = f"8-K found for {company}. Context: {context}"
+            if item_id:
+                message += f" (Article ID: {item_id})"
+            message += f"\n{url}"
+
+            webhook = DiscordWebhook(url=self.webhook_url, content=message)
+            response = webhook.execute()
+
+            if response.status_code == 200:
+                logger.info(f"Discord 8-K notification sent for {company}")
+            else:
+                logger.error(
+                    f"Failed to send Discord 8-K notification: {response.status_code}"
+                )
+        except Exception as e:
+            logger.error(f"Error sending 8-K Discord notification: {e}")
