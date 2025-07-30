@@ -20,7 +20,7 @@ def create_searcher(tmp_path, monkeypatch):
     return searcher
 
 
-def create_searcher_with_items(tmp_path, monkeypatch, items, xml_map):
+def create_searcher_with_items(tmp_path, monkeypatch, items, xml_map, notify_stub=None):
     """Return a FederalRegisterSearcher instance with stubbed dependencies."""
     monkeypatch.setenv("GUILD_ID", "1")
     import scraper.search_engine as se
@@ -53,16 +53,21 @@ def create_searcher_with_items(tmp_path, monkeypatch, items, xml_map):
             low = xml_content.lower()
             return [t for t in terms if t.lower() in low]
 
-    class NotifyStub:
-        def __init__(self, webhook_url=None):
-            pass
+    if notify_stub is None:
+        class NotifyStub:
+            def __init__(self, webhook_url=None):
+                pass
 
-        def send_notification(self, *a, **kw):
-            raise AssertionError("send_notification should not be called during rescan")
+            def send_notification(self, *a, **kw):
+                raise AssertionError("send_notification should not be called during rescan")
+
+            def send_8k_notification(self, *a, **kw):
+                raise AssertionError("send_8k_notification should not be called during rescan")
+        notify_stub = NotifyStub
 
     monkeypatch.setattr(se, "FreshRSSManager", FRStub)
     monkeypatch.setattr(se, "XMLContentParser", XMLStub)
-    monkeypatch.setattr(se, "DiscordNotifier", NotifyStub)
+    monkeypatch.setattr(se, "DiscordNotifier", notify_stub)
 
     searcher = se.FederalRegisterSearcher()
     searcher._store = se.StoreTerms(tmp_path / "terms.json")
@@ -150,4 +155,80 @@ def test_init_uses_persisted_terms(monkeypatch):
 
     searcher = se.FederalRegisterSearcher()
     assert searcher.get_search_terms() == ["persisted"]
+
+
+def test_detects_8k_and_notifies(monkeypatch, tmp_path):
+    monkeypatch.setenv("GUILD_ID", "1")
+    import scraper.search_engine as se
+    import importlib
+    importlib.reload(se)
+
+    class Item:
+        def __init__(self, **kw):
+            for k, v in kw.items():
+                setattr(self, k, v)
+
+    sec_item = Item(feed_id=3, id="c", url="http://example.com/c", title="ExampleCo Form 8-K report")
+
+    items = [sec_item]
+
+    class FRStub:
+        def get_unread_items(self):
+            return items
+
+        def get_all_items(self):
+            return items
+
+        def extract_item_id(self, item):
+            return item.id
+
+        def extract_xml_url(self, item):
+            return item.url
+
+        def mark_as_read(self, item_id):
+            pass
+
+    class XMLStub:
+        def fetch_and_parse_xml(self, url):
+            return ""
+
+        def search_xml_content(self, xml_content, terms):
+            return []
+
+    captured = {}
+
+    class NotifyStub:
+        def __init__(self, webhook_url=None):
+            pass
+
+        def send_notification(self, *a, **kw):
+            captured["unexpected"] = True
+
+        def send_8k_notification(self, company, context, url, item_id=None):
+            captured["company"] = company
+            captured["context"] = context
+            captured["url"] = url
+            captured["id"] = item_id
+
+    monkeypatch.setattr(se, "FreshRSSManager", FRStub)
+    monkeypatch.setattr(se, "XMLContentParser", XMLStub)
+    monkeypatch.setattr(se, "DiscordNotifier", NotifyStub)
+
+    searcher = se.FederalRegisterSearcher()
+    searcher._store = se.StoreTerms(tmp_path / "terms.json")
+    searcher.search_terms = []
+
+    results = searcher.process_items(False)
+
+    assert captured.get("company") == "ExampleCo"
+    assert captured.get("url") == "http://example.com/c"
+    assert results == [
+        {
+            "id": "c",
+            "url": "http://example.com/c",
+            "terms": ["8-K"],
+            "company": "ExampleCo",
+            "context": "ExampleCo Form 8-K report",
+        }
+    ]
 

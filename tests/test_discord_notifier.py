@@ -28,3 +28,27 @@ def test_send_notification(monkeypatch):
     assert 'alpha' in captured['content']
     assert 'http://example.com' in captured['content']
 
+
+def test_send_8k_notification(monkeypatch):
+    captured = {}
+
+    class Response:
+        status_code = 200
+
+    class WebhookStub:
+        def __init__(self, url, content):
+            captured['url'] = url
+            captured['content'] = content
+        def execute(self):
+            return Response()
+
+    monkeypatch.setattr('scraper.discord_notifier.DiscordWebhook', WebhookStub)
+
+    from scraper.discord_notifier import DiscordNotifier
+    notifier = DiscordNotifier('hook')
+    notifier.send_8k_notification('Co', 'context', 'http://example.com', '42')
+
+    assert captured['url'] == 'hook'
+    assert '8-K found for Co' in captured['content']
+    assert 'context' in captured['content']
+

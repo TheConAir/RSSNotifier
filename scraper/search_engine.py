@@ -5,6 +5,7 @@ from config.settings import DEFAULT_SEARCH_TERMS
 from loguru import logger
 from pathlib import Path
 from store_terms import StoreTerms
+import re
 
 
 
@@ -59,6 +60,17 @@ class FederalRegisterSearcher:
             return []
         low = text.lower()
         return [t for t in terms if t.lower() in low]
+
+    def _extract_8k_info(self, title: str):
+        """Attempt to extract company and context from an 8-K title."""
+        if not title:
+            return ("Unknown", "")
+        company = title
+        context = title
+        m = re.split(r'form\s*8-k', title, flags=re.IGNORECASE)
+        if m:
+            company = m[0].strip(" -") or company
+        return (company, context)
 
     def process_items(self, rescan):
         """Process all unread items and check for search terms - your core logic"""
@@ -116,8 +128,27 @@ class FederalRegisterSearcher:
                     item_id = item.id
                     title = item.title or ""
 
-                    # Match against the SEC item title
-                    found_terms = self._find_terms_in_text(title, self.search_terms)
+                    # Always look for 8-K filings
+                    if "8-k" in title.lower():
+                        company, context = self._extract_8k_info(title)
+                        logger.info(f"8-K filing found for SEC article {item_id}!")
+                        logger.info(url)
+                        if not rescan:
+                            self.notifier.send_8k_notification(company, context, url, item_id)
+                        found_articles.append({
+                            'id': item_id,
+                            'url': url,
+                            'terms': ['8-K'],
+                            'company': company,
+                            'context': context,
+                        })
+
+                    # Match against the SEC item title, excluding the 8-K form which is handled separately
+                    found_terms = [
+                        t
+                        for t in self._find_terms_in_text(title, self.search_terms)
+                        if t.lower() != "8-k"
+                    ]
 
                     if found_terms:
                         logger.info(
